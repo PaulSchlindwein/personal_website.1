@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from datetime import datetime, timedelta
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
 from config import Config
-from models import db, User
+from models import db, User, Customer, Campaign, Touchpoint, Interaction, SalesMetric, FinancialMetric
 from forms import RegistrationForm, LoginForm
 from email_utils import send_verification_email, send_admin_notification, send_approval_notification
 import os
@@ -222,6 +223,129 @@ def create_app():
         send_approval_notification(user, approved=False)
         
         return jsonify({'message': f'User {user.username} rejected'}), 200
+    
+    # Customer Data API Routes
+    @app.route('/api/customers', methods=['GET'])
+    @login_required
+    def api_get_customers():
+        """API endpoint to get all customers with pagination"""
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search', '')
+        
+        query = Customer.query
+        
+        if search:
+            query = query.filter(
+                db.or_(
+                    Customer.first_name.ilike(f'%{search}%'),
+                    Customer.last_name.ilike(f'%{search}%'),
+                    Customer.email.ilike(f'%{search}%')
+                )
+            )
+        
+        customers = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            'customers': [{
+                'customer_id': c.customer_id,
+                'first_name': c.first_name,
+                'last_name': c.last_name,
+                'email': c.email,
+                'device_type': c.device_type,
+                'created_at': c.created_at.isoformat() if c.created_at else None
+            } for c in customers.items],
+            'total': customers.total,
+            'pages': customers.pages,
+            'current_page': customers.page,
+            'per_page': per_page
+        }), 200
+    
+    @app.route('/api/customers/<int:customer_id>', methods=['GET'])
+    @login_required
+    def api_get_customer_details(customer_id):
+        """API endpoint to get detailed customer information"""
+        customer = Customer.query.get_or_404(customer_id)
+        
+        # Get related data
+        touchpoints = Touchpoint.query.filter_by(customer_id=customer_id).limit(10).all()
+        sales_metrics = SalesMetric.query.filter_by(customer_id=customer_id).limit(10).all()
+        financial_metrics = FinancialMetric.query.filter_by(customer_id=customer_id).limit(10).all()
+        
+        return jsonify({
+            'customer': {
+                'customer_id': customer.customer_id,
+                'first_name': customer.first_name,
+                'last_name': customer.last_name,
+                'email': customer.email,
+                'device_type': customer.device_type,
+                'created_at': customer.created_at.isoformat() if customer.created_at else None
+            },
+            'touchpoints': [{
+                'touchpoint_id': t.touchpoint_id,
+                'touchpoint_type': t.touchpoint_type,
+                'touchpoint_detail': t.touchpoint_detail,
+                'interaction_date': t.interaction_date.isoformat() if t.interaction_date else None,
+                'device_type': t.device_type
+            } for t in touchpoints],
+            'sales_metrics': [{
+                'sale_id': s.sale_id,
+                'conversion_stage': s.conversion_stage,
+                'deal_size': s.deal_size,
+                'sale_date': s.sale_date.isoformat() if s.sale_date else None,
+                'won': bool(s.won)
+            } for s in sales_metrics],
+            'financial_metrics': [{
+                'financial_id': f.financial_id,
+                'revenue': f.revenue,
+                'cac': f.cac,
+                'cltv': f.cltv,
+                'cpc': f.cpc,
+                'cpcv': f.cpcv,
+                'acv': f.acv
+            } for f in financial_metrics]
+        }), 200
+    
+    @app.route('/api/campaigns', methods=['GET'])
+    @login_required
+    def api_get_campaigns():
+        """API endpoint to get all campaigns"""
+        campaigns = Campaign.query.all()
+        
+        return jsonify({
+            'campaigns': [{
+                'campaign_id': c.campaign_id,
+                'campaign_name': c.campaign_name,
+                'utm_source': c.utm_source,
+                'utm_medium': c.utm_medium,
+                'utm_campaign': c.utm_campaign,
+                'ad_keyword': c.ad_keyword,
+                'creative_asset': c.creative_asset,
+                'start_date': c.start_date.isoformat() if c.start_date else None,
+                'ad_spend': c.ad_spend
+            } for c in campaigns]
+        }), 200
+    
+    @app.route('/api/dashboard/stats', methods=['GET'])
+    @login_required
+    def api_get_dashboard_stats():
+        """API endpoint to get dashboard statistics"""
+        total_customers = Customer.query.count()
+        total_campaigns = Campaign.query.count()
+        total_revenue = db.session.query(db.func.sum(FinancialMetric.revenue)).scalar() or 0
+        total_interactions = Interaction.query.count()
+        
+        # Recent customers (last 30 days)
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        recent_customers = Customer.query.filter(Customer.created_at >= thirty_days_ago).count()
+        
+        return jsonify({
+            'total_customers': total_customers,
+            'total_campaigns': total_campaigns,
+            'total_revenue': float(total_revenue),
+            'total_interactions': total_interactions,
+            'recent_customers': recent_customers
+        }), 200
     
     return app
 
