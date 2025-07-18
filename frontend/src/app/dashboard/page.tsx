@@ -145,6 +145,14 @@ export default function Dashboard() {
             </button>
           </div>
 
+          <div className="bg-gray-900/20 border border-gray-700 rounded-lg p-6 hover:border-gray-500 transition-colors">
+            <h3 className="text-xl font-bold mb-3">Customer Data</h3>
+            <p className="text-gray-300 mb-4">View and manage customer information and analytics.</p>
+            <Link href="/customers" className="inline-block px-4 py-2 bg-transparent text-white border border-white rounded hover:bg-white hover:text-black transition-colors">
+              View Customer Data
+            </Link>
+          </div>
+
           {user.is_admin && (
             <div className="bg-gray-900/20 border border-gray-700 rounded-lg p-6 hover:border-gray-500 transition-colors">
               <h3 className="text-xl font-bold mb-3">Admin Panel</h3>
