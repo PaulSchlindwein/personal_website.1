@@ -112,6 +112,66 @@ A modern personal website with a sophisticated authentication system, featuring 
 6. Admin approves user account
 7. User can now sign in
 
+## User Verification (Development)
+
+Since email functionality requires configuration, you can manually verify users during development:
+
+### Where to Run Commands
+**Open a NEW terminal window/tab** (keep your backend server running in the original terminal)
+
+### Step-by-Step Verification Process
+
+1. **Navigate to the backend directory:**
+   ```bash
+   cd backend
+   ```
+
+2. **Activate the virtual environment:**
+   ```bash
+   # On Windows:
+   .\venv\Scripts\Activate.ps1
+   # On macOS/Linux:
+   source venv/bin/activate
+   ```
+
+3. **List all users to see pending registrations:**
+   ```bash
+   python verify_user.py list
+   ```
+
+4. **Verify a specific user (replace 'username' with actual username):**
+   ```bash
+   python verify_user.py verify username
+   ```
+
+### Example Workflow
+```bash
+# 1. Start backend server (Terminal 1)
+cd backend
+.\venv\Scripts\Activate.ps1
+python app.py
+
+# 2. Start frontend (Terminal 2)
+cd frontend
+npm run dev
+
+# 3. Register a new user at http://localhost:3000/register
+
+# 4. Verify the user (Terminal 3 - NEW terminal)
+cd backend
+.\venv\Scripts\Activate.ps1
+python verify_user.py list
+python verify_user.py verify newusername
+
+# 5. Test login at http://localhost:3000/signin
+```
+
+### Important Notes
+- **DO NOT** stop your backend server while verifying users
+- Use a **separate terminal** for verification commands
+- The backend server must be running for verification to work
+- Users must be verified AND approved before they can log in
+
 ### User Login
 1. User enters credentials
 2. System checks email verification
