@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import AuthenticatedLayout from "@/components/AuthenticatedLayout";
 
 interface User {
   id: number;
@@ -14,66 +14,23 @@ interface User {
 }
 
 export default function Dashboard() {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    // Get user data from localStorage
     const userData = localStorage.getItem("user");
-
-    if (!isAuthenticated || !userData) {
-      router.push("/signin");
-      return;
+    if (userData) {
+      try {
+        const userObj = JSON.parse(userData);
+        setUser(userObj);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
     }
-
-    try {
-      const userObj = JSON.parse(userData);
-      setUser(userObj);
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      router.push("/signin");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      // Clear local storage and redirect
-      localStorage.removeItem("user");
-      localStorage.removeItem("isAuthenticated");
-      router.push("/");
-    }
-  };
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  }, []);
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <AuthenticatedLayout>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -81,17 +38,9 @@ export default function Dashboard() {
         className="container mx-auto px-4 py-8"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-bold tracking-wider mb-2">Dashboard</h1>
-            <p className="text-gray-300">Welcome back, {user.first_name}!</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="px-6 py-3 bg-transparent text-white border-2 border-white rounded-lg hover:bg-white hover:text-black transition-all duration-300 font-semibold"
-          >
-            Logout
-          </button>
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold tracking-wider mb-2">Dashboard</h1>
+          <p className="text-gray-300">Welcome back, {user?.first_name}!</p>
         </div>
 
         {/* User Info Card */}
@@ -105,19 +54,19 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-gray-400 text-sm">Name</p>
-              <p className="text-lg">{user.first_name} {user.last_name}</p>
+              <p className="text-lg">{user?.first_name} {user?.last_name}</p>
             </div>
             <div>
               <p className="text-gray-400 text-sm">Username</p>
-              <p className="text-lg">{user.username}</p>
+              <p className="text-lg">{user?.username}</p>
             </div>
             <div>
               <p className="text-gray-400 text-sm">Email</p>
-              <p className="text-lg">{user.email}</p>
+              <p className="text-lg">{user?.email}</p>
             </div>
             <div>
               <p className="text-gray-400 text-sm">Role</p>
-              <p className="text-lg">{user.is_admin ? "Administrator" : "User"}</p>
+              <p className="text-lg">{user?.is_admin ? "Administrator" : "User"}</p>
             </div>
           </div>
         </motion.div>
@@ -153,7 +102,7 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          {user.is_admin && (
+          {user?.is_admin && (
             <div className="bg-gray-900/20 border border-gray-700 rounded-lg p-6 hover:border-gray-500 transition-colors">
               <h3 className="text-xl font-bold mb-3">Admin Panel</h3>
               <p className="text-gray-300 mb-4">Manage users and system settings.</p>
@@ -176,6 +125,6 @@ export default function Dashboard() {
           </Link>
         </motion.div>
       </motion.div>
-    </main>
+    </AuthenticatedLayout>
   );
 } 
